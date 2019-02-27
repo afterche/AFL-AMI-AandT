@@ -1,0 +1,633 @@
+//AM
+
+// notepad++
+// ctrl+f
+// галочка спец символы должна стоять
+// найти ...символ...
+// заменить на
+// \r\n
+// \n\r - найти, удалить пустые строки
+//	Правка ---> Операция с пробелами ---> Убрать заглавные пробелы
+
+/////////////////////////////////////////////
+///////////////ОГРАНИЧЕНИЕ ПО СУММЕ СТАВКИ
+////////////////////////////////////////////
+
+//Настройки для оптимизатора, не трогать
+save_to_log_file=True; 
+optimization1=optimization2=optimization3=optimization4=optimization5=optimization6=optimization7=0; 
+//-Настройки для оптимизатора, не трогать
+
+as_between_min=1000000;
+nomber_from_file=Max_Sum_systemRepit=SSTTT=Min_Sum_system_time=maximum_single_drawdownmax=current_result=i=Random_value=SumRepit=probability_of_loss=current_bet=Sum_system=sum_system_time=counter=next_bet_2=counter_losses=counter_wins=max_bet=maximum_single_drawdown=
+max_the_number_of_losses_in_a_row=SumLastBet=maximum_amount_of_losses=game_counter_extra=stop=how_many_times=game_counter=next_bet=counter_multiply_bet=Max_Sum_system=Min_Sum_system=the_number_of_losses_in_a_row=losses_in_a_row_in_the_data=max_losses_in_a_row_in_the_data=0;
+
+procedure calc_probability(){
+	//Вероятность проигрыша практическая
+	all_times=counter_losses+counter_wins;//всего раз по идеи равно i
+	//Вероятность проигрыша
+	
+	probability_of_loss=(all_times-counter_wins)/all_times;
+}
+
+//Вычисляется сумма(1,-1) за jjj последних результатов
+procedure SumLastBetp(jjj){
+		//SumLastBet
+		AmountLastBet=jjj;
+		if(i<=AmountLastBet){
+			s[i]=nomber_from_file;
+			SumLastBet=SumLastBet+nomber_from_file;
+		} 
+		else if (i>AmountLastBet){
+			SumLastBet=SumLastBet-s[1]+nomber_from_file;
+			for(is=1;is<AmountLastBet;is++){
+				s[is]=s[is+1];
+			}
+			s[AmountLastBet]=nomber_from_file;
+		}
+}
+	
+
+
+//Процедура запись в  файл 
+	FileNameLog="C:/frb/rezult"+optimization5+".csv"; //лог файл
+	procedure save_log(p_string_log)
+	{
+	f1 = fopen(FileNameLog, "a");
+	if(f1){
+	fputs(" "+p_string_log
+											+";"+nomber_from_file
+											+";"+SumLastBet
+											+";"+maximum_amount_of_losses
+											+";"+current_result
+											+";"+current_bet
+											+";"+Sum_system
+											+";"+Sum_system_time
+											+";"+SSTTT
+											+";"+Min_Sum_system_time
+											+";"+counter
+											//+";"+next_bet_2
+											+";"+counter_losses
+											+";"+counter_wins
+											+";"+max_bet					
+											+";"+maximum_single_drawdown				
+											+";"+max_the_number_of_losses_in_a_row
+											+";"+Max_Sum_system
+											+";"+Min_Sum_system
+											+";"+max_losses_in_a_row_in_the_data
+											+";"+the_number_of_losses_in_a_row
+											+";"+how_many_times
+											+";"+game_counter
+											+";"+as_between_min
+											+";"+Random_value
+											+";"+probability_of_loss
+											+";"+the_number_of_losses_in_a_row
+											+";"+stop
+											+"\n",f1);
+	fclose(f1);
+}//end if
+	}
+//-Процедура запись в  файл
+
+f3= fopen("C:/frb/Bingo.csv", "w");
+		fputs(	" "
+			
+			+"\n",f3);			
+		fclose(f3);
+ 
+//Заголовок файла
+procedure save_rezult_title(){
+	
+f1 = fopen(FileNameLog, "w");
+fputs(	"раз;"
+		+"делаем;"
+		+"выигр/проигр.;"
+		+"SumLastBet.;"
+		+"maximum_amount_of_losses;"
+		+"тек.рез.;"
+		+"тек.став.;"
+	//	+"III;"
+		+"сумма;"
+		+"суммаTIME;"
+		+"SSTTT;"
+		+"суммаTIMEMIN;"
+		+"№ раздачи в игре;"
+		+"кол-во проигр;"
+		+"кол-во выигр;"
+		+"Макс. став;"
+		+"Макс разов. потеря;"
+		+"Макс проигр. подряд;"
+		+"Макс. прибыль;"
+		+"Мин. прибыль;"
+		+"Проигрышей подряд в файле;"
+		+"Сколько проигрышей текущий;"
+		+"Сколько раз доходили до ограничения;"
+		+"Игр сыграно;"
+		+"as_between_min;"
+		+"Random_value;"
+		+"probability_of_loss;"
+		+"the_number_of_losses_in_a_row;"
+		+"stop;"
+		+"\n",f1);
+fclose(f1);
+//-Заголовок файла
+}
+
+//Файл с итогами заголовок
+f2 = fopen("C:/frb/InTotal.csv", "w");
+	fputs(	"Кол-во розыгрышей;"//макс количество проигрышей
+			+"увел. ставка;"
+			+"вероятность;"
+			+"огр на экстра;"
+			+"optimization41;"
+			+"optimization42;"
+			//+"огранич экстра;"
+			//+"Х;"
+			//+"Х;"
+			+"maximum_amount_of_losses;"
+			+"Итого;"
+			+"суммаTIMEMIN;"
+			+"game_counter_extra--;"
+			+"Макс. став;"
+			+"Макс разов. потеря;"
+			+"Показатель системы;"
+			+"Требуемый баланс;"
+			+"Сколько раз доходили до ограничения;"
+			+"Макс проигр. подряд;"
+			+"Макс. прибыль;"
+			+"Мин. прибыль;"
+			+"Проигрышей подряд в файле;"
+			+"Раз;"
+			+"Всего Раз;"
+			+"Вероятность проигр.;"
+			+"МаксDD;"
+			+"Игр сыграно;"
+			+"as_between_min;"
+			+"Random_value;"
+			+"probability_of_loss;"
+				+"the_number_of_losses_in_a_row;"
+				+"stop;"
+			+"\n",f2);
+	fclose(f2);
+//-Файл с итогами заголовок
+
+
+
+for( optimization1=3; optimization1<4; optimization1=optimization1+1)//ограничитель потерь для антимартин
+{
+for( optimization2=1; optimization2 <26; optimization2=optimization2+26)//увеличенная ставка
+{
+for( optimization3=1.1; optimization3 <11; optimization3=optimization3+11)
+{
+for( optimization4=0; optimization4 <1500; optimization4=optimization4+1500)//какая макс ставка для антимартин
+{
+for( optimization42=0; optimization42 <1500; optimization42=optimization42+1500)//после какого значения  SuM_time переключаемся
+{
+
+for( optimization41=77; optimization41 <250; optimization41=optimization41+250)//на сколько частей делим SYM_time
+{
+
+
+
+SumRepit=MinRepit=MinRepitMin=maximum_single_drawdownmax=0;
+Min_Sum_system_timeS=0;
+Min_Sum_system_timeMin=kmainAll=0;
+
+for( optimization5=0; optimization5 <1; optimization5++)//проходов при данных параметрах
+{
+//for( optimization6=3; optimization6 <13; optimization6++)
+//{
+//for( optimization7=0; optimization7 <300; optimization7=optimization7+100)
+//{
+
+////////////Файл Результат////////////
+
+FileNameLog="C:/frb/rezult"+optimization5+".csv";
+//save_to_log_file=False;//Output в файл(ы) rezult False - No, //- to comment Yes
+if (save_to_log_file){
+ save_rezult_title();
+}
+
+ 
+ttt=optimization4;//не больше макс ставки
+
+//optimization1=13;//допустимое колво розыгрышей на обычной ставке
+//optimization2=4;//увелич ставка
+//optimization3=13;//сколько игр после проигрыша на увелич ставке
+//optimization4=10;//допустимое колво розыгрышей на увеличенной ставке
+//optimization5=6;//после скольких розыгрышей в игре увеличиваем следующую ставку
+//optimization6=25;//следующая ставка
+//optimization7=3;//увеличиваем ставку после стольки текущих розыгрышей
+
+nomber_from_file=SumLastBet=next_bet=Max_Sum_systemRepit=current_result=next_bet_2=current_bet=Sum_system=sum_system_time=sum_system_time=sum_system_time=all_times=counter=counter_losses=counter_wins=max_bet=maximum_single_drawdown=
+max_the_number_of_losses_in_a_row=SSTTT=Random_value=Min_Sum_system_time=probability_of_loss=stop=game_counter_extra=how_many_times=game_counter=counter_multiply_bet=Max_Sum_system=Min_Sum_system=the_number_of_losses_in_a_row=losses_in_a_row_in_the_data=max_losses_in_a_row_in_the_data=0;
+
+
+//Количество проигрышей после которых увеличиваемся
+number_of_losses=1;
+//Ставки 
+bet_1=start_bet=1;
+bet_2=2;
+bet_3=4;
+//Максимальное кол-во розыгрышей в игре 
+maximum_amount_of_losses=optimization1;
+//Сумма по системе 
+Sum_system=0;
+//Счетчик проходов
+i=0;
+i_1000=0;i_1000_max=1000;
+//Счетчик проигрышей
+counter=1;
+//Статистика / Вероятности
+counter_losses=0;//счетчик побед
+counter_wins=0;//счетчик побед
+the_number_of_losses_in_a_row=0;//количество проигрышей подряд
+max_the_number_of_losses_in_a_row=0;//максимальное количество проигрышей подряд
+max_bet=0;//максимально поставленная ставка
+Max_Sum_system=0;//максимум
+Min_Sum_system=0;//минимум 
+single_drawdown=0;//текущая непрерывная просадка
+maximum_single_drawdown=0;//максимальный непрерывный проигрыш
+game_counter=0;//сколько игр сыграно
+game_counter_extra=switch_bet=0;//игр на повышенной ставке
+as_between_1=as_between=0;
+as_between_min=1000000;//сколько раз между optimization1 самое малое
+//Открываем файл для чтения
+fh_1 = fopen( "C:/frb/stat/stat.txt", "r"); 
+
+isw=0;
+ssw=450000;
+
+//Читаем из файла пока не кончится
+while (! feof( fh_1 ) ){
+
+	read_line=fgets(fh_1);//прочитал из файла
+	nomber_from_file=StrToNum(read_line);
+		i=i+1;
+		isw--;
+		
+		i_1000++;
+		if(i_1000==i_1000_max)i_1000=0;
+		
+			if(nomber_from_file == -1){
+				counter_losses++;
+				
+				the_number_of_losses_in_a_row++;
+				if(the_number_of_losses_in_a_row>max_the_number_of_losses_in_a_row) max_the_number_of_losses_in_a_row=the_number_of_losses_in_a_row;
+				
+				losses_in_a_row_in_the_data++;
+				if(losses_in_a_row_in_the_data>max_losses_in_a_row_in_the_data) max_losses_in_a_row_in_the_data=losses_in_a_row_in_the_data;
+			}
+			else if(nomber_from_file == 1){
+				counter_wins++;
+				losses_in_a_row_in_the_data=0;
+				the_number_of_losses_in_a_row=0;
+			}	
+		
+		//SumLastBetp(optimization41);
+			
+			
+		flag_probability_increased=0;//чтобы несколько раз не summ
+		flag_probability_increased_anti=0;
+		maximum_amount_of_losses=optimization1;
+	
+	//am13mart
+	if(sum_system_time>1)sum_system_time=0;
+	bet_1=0;
+	
+	if((Random_value=mtRandom())<optimization3){
+		
+		 //мартингейл
+			flag_probability_increased=1;
+			flag_probability_increased_anti=0;
+			maximum_amount_of_losses=13;
+			bet_1=int(optimization2 + abs(Sum_system_time/optimization41));
+				
+	}
+	
+	current_bet=bet_1;
+	
+	
+		//Определяем макс ставку
+			if(current_bet>=max_bet) max_bet=current_bet;
+	//-1
+	if(nomber_from_file==-1 ){	
+		
+		current_result=nomber_from_file*current_bet;
+		//Сумма по системе
+		sum_system_time=sum_system_time+current_result;
+		if(Sum_system_time<Min_Sum_system_time)Min_Sum_system_time=Sum_system_time;
+		//if(abs(Sum_system_time)>=optimization4) Sum_system_time=0;
+		Sum_system=Sum_system+current_result;
+		if(Sum_system>Max_Sum_system)Max_Sum_system=Sum_system;
+		if(Sum_system<Min_Sum_system)Min_Sum_system=Sum_system;
+		//максимальный непрерывный проигрыш
+		single_drawdown=single_drawdown+current_result;//текущая непрерывная просадка
+		if(single_drawdown<maximum_single_drawdown)maximum_single_drawdown=single_drawdown;//максимальный непрерывный проигрыш
+		calc_probability();
+		//Запись в файл
+		if(save_to_log_file)  save_log(""+i+";"+"Loss");
+		//счетчик проигрышей
+		counter=1;
+		
+		/////////////////////////////////////
+		//Увеличиваем ставку после проигрыша
+		////////////////////////////////////
+		if(flag_probability_increased==1 AND maximum_amount_of_losses>1){
+			do {
+				read_line=fgets(fh_1);//прочитал из файла
+				nomber_from_file=StrToNum(read_line);//преобразовал в число
+				
+				if( nomber_from_file==-1 OR nomber_from_file==1){ // защита от пустой строки
+					//SumLastBetp(optimization41);				
+					counter++;
+					//++++++++++++++++++++++++
+					current_bet=current_bet*2;
+					//++++++++++++++++++++++++
+					//Определяем макс ставку
+					if(current_bet>=max_bet) max_bet=current_bet;
+					
+						
+					//текущий результат
+					current_result=nomber_from_file*current_bet;
+					//Определяем макс ставку
+					//if(current_bet>max_bet) max_bet=current_bet;
+					
+					if(nomber_from_file==-1){
+						//количество проигрышей подряд
+						the_number_of_losses_in_a_row++;
+						if(the_number_of_losses_in_a_row>max_the_number_of_losses_in_a_row) max_the_number_of_losses_in_a_row=the_number_of_losses_in_a_row;
+						//сколько проигр. подряд всего в файле
+						losses_in_a_row_in_the_data++;
+						if(losses_in_a_row_in_the_data>max_losses_in_a_row_in_the_data) max_losses_in_a_row_in_the_data=losses_in_a_row_in_the_data;
+						//максимальный непрерывный проигрыш
+						single_drawdown=single_drawdown+current_result;//текущая непрерывная просадка
+						if(single_drawdown<maximum_single_drawdown)maximum_single_drawdown=single_drawdown;//максимальный непрерывный проигрыш
+					}
+					//Статистика / вероятности всего проигр./выигр.
+					if(nomber_from_file == -1){
+						counter_losses++;
+					}
+					else if(nomber_from_file == 1){
+						counter_wins++;
+						losses_in_a_row_in_the_data=0;
+						the_number_of_losses_in_a_row=0;
+					}
+					i=i+1;//счетчик раз
+					//Сумма ПРИБЫЛИ по системе
+					Sum_system=Sum_system+current_result;
+					sum_system_time=sum_system_time+current_result;
+					if(Sum_system_time<Min_Sum_system_time)Min_Sum_system_time=Sum_system_time;
+					//if(abs(Sum_system_time)>=optimization4) Sum_system_time=0;
+					//Макс/мин результат
+					if(Sum_system>Max_Sum_system)Max_Sum_system=Sum_system;
+					if(Sum_system<Min_Sum_system)Min_Sum_system=Sum_system;
+					if(the_number_of_losses_in_a_row==maximum_amount_of_losses) how_many_times++;
+					calc_probability();
+					//Запись в файл
+					if(save_to_log_file) save_log(""+i+";"+"EXTRA-1!!!");
+				} //end if защита от пустой строки
+			} while (
+			counter<maximum_amount_of_losses 
+			//current_bet<=3000000
+			AND
+				!feof( fh_1 ) AND
+				nomber_from_file!=1);
+		} //end if
+			if (current_bet>=optimization1) stop++;
+		//Если вышли с проигрышем, то
+		if(nomber_from_file == -1) counter_multiply_bet=optimization3;
+		//Игр сыграно
+		game_counter++;
+		game_counter_extra--;
+		//обнуляем счетчики	
+		single_drawdown=0;
+		
+		if (counter==optimization1) {
+			if(as_between_1==0){
+				as_between_1=game_counter;
+			} else {
+				as_between=game_counter-as_between_1;
+				as_between_1=game_counter;
+				if(as_between<as_between_min)as_between_min=as_between;
+			}
+		}	
+		counter=1;
+	}
+		
+	//1
+	else if (nomber_from_file==1){
+		single_drawdown=0;
+		the_number_of_losses_in_a_row=0;//обнулил количество проигрышей подряд
+		
+		
+		
+		current_result=nomber_from_file*current_bet;
+		//счетчик проигрышей
+		counter=1;
+		//Сумма по системе
+		
+		Sum_system=Sum_system+current_result;
+		
+		if(current_result>=ttt)
+								{
+			//sum_system_time=0;
+			flag_probability_increased_anti=0;
+		}
+		//sumSYSTEMold=sum_system_time;
+		sum_system_time=sum_system_time+current_result;
+		//if(abs(Sum_system_time)>=optimization4) Sum_system_time=0;
+		if(Sum_system_time<Min_Sum_system_time)Min_Sum_system_time=Sum_system_time;
+		if(Sum_system>Max_Sum_system)Max_Sum_system=Sum_system;
+		if(Sum_system<Min_Sum_system)Min_Sum_system=Sum_system;
+		//Игр сыграно
+		game_counter++;
+		game_counter_extra--;
+		calc_probability();
+		//Запись в файл
+		if(save_to_log_file) save_log(""+i+";"+"Win");
+	
+		if(flag_probability_increased_anti==1 AND maximum_amount_of_losses>1){
+				do {
+					read_line=fgets(fh_1);//прочитал из файла
+					nomber_from_file=StrToNum(read_line);//преобразовал в число
+					
+					if( nomber_from_file==-1 OR nomber_from_file==1){ // защита от пустой строки
+						//SumLastBetp(optimization41);				
+						counter++;
+						current_bet=current_bet*2;
+						//if (current_bet>=75000000){
+							//current_bet=Sum_system_time=1;
+						//}
+						//Определяем макс ставку
+						if(current_bet>=max_bet) max_bet=current_bet;
+						
+						//текущий результат
+						current_result=nomber_from_file*current_bet;
+						
+						
+						if(nomber_from_file==-1){
+							//количество проигрышей подряд
+							the_number_of_losses_in_a_row++;
+							if(the_number_of_losses_in_a_row>max_the_number_of_losses_in_a_row) max_the_number_of_losses_in_a_row=the_number_of_losses_in_a_row;
+							//сколько проигр. подряд всего в файле
+							losses_in_a_row_in_the_data++;
+							if(losses_in_a_row_in_the_data>max_losses_in_a_row_in_the_data) max_losses_in_a_row_in_the_data=losses_in_a_row_in_the_data;
+							//максимальный непрерывный проигрыш
+							single_drawdown=single_drawdown+current_result;//текущая непрерывная просадка
+							if(single_drawdown<maximum_single_drawdown)maximum_single_drawdown=single_drawdown;//максимальный непрерывный проигрыш
+						}
+						//Статистика / вероятности всего проигр./выигр.
+						if(nomber_from_file == -1){
+							counter_losses++;
+						}
+						else if(nomber_from_file == 1){
+							counter_wins++;
+							losses_in_a_row_in_the_data=0;
+							the_number_of_losses_in_a_row=0;
+						}
+						i=i+1;//счетчик раз
+						//Сумма ПРИБЫЛИ по системе
+						Sum_system=Sum_system+current_result;
+						//if(current_result>=10000 or abs(current_result)>25000000)
+						if(current_result>=ttt)
+					
+						{
+							//sum_system_time=0;
+							counter=maximum_amount_of_losses;
+						}	
+						sum_system_time=sum_system_time+current_result;
+						if(Sum_system_time<Min_Sum_system_time)Min_Sum_system_time=Sum_system_time;
+						//if(abs(Sum_system_time)>=optimization4) Sum_system_time=0;
+						//Макс/мин результат
+						if(Sum_system>Max_Sum_system)Max_Sum_system=Sum_system;
+						if(Sum_system<Min_Sum_system)Min_Sum_system=Sum_system;
+						if(the_number_of_losses_in_a_row==maximum_amount_of_losses) how_many_times++;
+						calc_probability();
+						//Запись в файл
+						if(save_to_log_file) save_log(""+i+";"+"EXTRA1!!!");
+					} //end if защита от пустой строки
+				} while (counter<maximum_amount_of_losses  AND
+					!feof( fh_1 ) AND
+					nomber_from_file!=-1);
+		} //end if(flag_probability_increased_anti==1) 
+	} //end else if (nomber_from_file==1)
+	
+	next_bet_2=0;
+	counter=1;	
+}  //конец цикла while, файл кончился
+fclose (fh_1);
+
+//Вероятность проигрыша практическая
+all_times=counter_losses+counter_wins;//всего раз по идеи равно i
+//Вероятность проигрыша
+probability_of_loss=(all_times-counter_wins)/all_times;
+//Максимальная просадка
+MAX_DD=Max_Sum_system-Min_Sum_system;
+//Требуемый баланс
+required_balance=max_bet+maximum_single_drawdown*-1;
+//Индикатор системы
+significative_system=Sum_system/required_balance;
+
+//Файл с итогами 
+//if (Sum_system>0){
+	f2= fopen("C:/frb/InTotal.csv", "a");
+		fputs(	" "
+			+optimization1
+			+";"+optimization2
+			+";"+optimization3
+			+";"+optimization4
+			+";"+optimization41
+			+";"+optimization42
+			//+";"+optimization5
+			//+";"+optimization6
+			//+";"+optimization7
+			+";"+maximum_amount_of_losses
+			//+";"+iii
+			+";"+Sum_system
+			+";"+Min_Sum_system_time
+			+";"+game_counter_extra
+			+";"+max_bet
+			+";"+maximum_single_drawdown
+			+";"+significative_system
+			+";"+required_balance
+			+";"+how_many_times
+			+";"+max_the_number_of_losses_in_a_row
+			+";"+Max_Sum_system
+			+";"+Min_Sum_system
+			+";"+max_losses_in_a_row_in_the_data
+			+";"+i
+			+";"+all_times
+			+";"+probability_of_loss
+			+";"+MAX_DD
+			+";"+game_counter
+			+";"+as_between_min
+			+";"+the_number_of_losses_in_a_row
+			+";"+stop
+			+"\n",f2);			
+		fclose(f2);
+//} // end if
+//-Файл с итогами 
+
+//конец первого оптимизационного цикла
+
+
+kmain=abs(SumRepit/Min_Sum_system_time);
+kmainAll+=kmain;
+
+SumRepit=SumRepit+Sum_system;
+Min_Sum_system_timeS=Min_Sum_system_times+Min_Sum_system_time;
+
+if(Min_Sum_system_timeMin>Min_Sum_system_time)Min_Sum_system_timeMIN=Min_Sum_system_time;
+
+Max_Sum_systemRepit=Max_Sum_systemRepit+Max_Sum_system;
+
+if(maximum_single_drawdownmax<maximum_single_drawdown) maximum_single_drawdownmax=maximum_single_drawdown;
+MinRepit=MinRepit+maximum_single_drawdown;
+
+krep=abs(SumRepit/Min_Sum_system_timeS);
+krep2=abs(SumRepit/Min_Sum_system_timeMin);
+
+
+
+}
+f3= fopen("C:/frb/Bingo.csv", "a");
+		fputs(	" "
+			+optimization1
+			+";"+optimization2
+			+";"+optimization3
+			+";"+optimization4
+			+";"+optimization41
+			+";"+optimization42
+			//+";"+optimization5
+			//+";"+optimization6
+			//+";"+optimization7
+			+";"+SumRepit
+			+";"+Min_Sum_system_timeS
+			+";"+Min_Sum_system_timeMin
+			+";"+kmainAll
+			//+";"+maximum_single_drawdownmax
+			+";"+krep
+			+";"+krep2
+			+";"+how_many_times
+			+"\n",f3);			
+		fclose(f3);
+Openfile=True;}}}}}} //конец оптимизационные циклы	
+
+//Вывод на экран
+
+GfxDrawText("Итого;= "+Sum_system+" Раз= "+i+" Игр= "+game_counter+" Проигрышей подряд в файле="+max_losses_in_a_row_in_the_data,7,10,750,750, format = 0 );
+GfxDrawText("Всего раз="+all_times+" Вероятность проигрыша= "+probability_of_loss,7,30,500,700, format = 0 );
+GfxDrawText("Максимальная ставка="+max_bet+" Макс_DD= "+MAX_DD,7,45,500,700, format = 0 );
+GfxDrawText("Макс. разовая потеря="+maximum_single_drawdown+" Макс кол-во подряд проигр.= "+max_the_number_of_losses_in_a_row+" Сколько раз доходили до ограничения="+how_many_times,7,60,5000,7000, format = 0 );
+GfxDrawText("Макс. прибыль="+Max_Sum_system+" Мин прибыль= "+Min_Sum_system,7,75,500,700, format = 0 );
+GfxDrawText("Требуемый баланс="+required_balance+" Индикатор системы="+significative_system,7,90,500,700, format = 0 );
+//Запускаем сторонее приложение, в данном случае чтобы Ами заново не начал пересчитывать
+//файл открывается - блокируется Ами досту получить не может и останавливается по ошибке--- НЕ ОСТАНАВЛИВАЕТСЯ НЕ ЗНАЮ ПОЧЕМУ!!!
+//Openfile=True;
+
+	AlertIf( Openfile, "EXEC startxl.bat", "Launching external application", 3 );
+while(3){
+}
+//copy /Y c:\frb\rezult.csv c:\frb\rezult2.csv 
+// pause*7111// notepad++dsfsdываыва

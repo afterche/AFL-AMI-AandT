@@ -1,0 +1,1163 @@
+//                                                 EMMA...
+//                                   ///////////////////////////////
+//                               ///////////////////////////////////////
+//                            /////////////////////////////////////////////
+//                       //////////////////////////////////////////////////////
+//                   /////////////////////////////////////////////////////////////
+////////////
+//C:/ami/Quik_pozition_from_quik.et
+/*
+Многострочный коментарий
+
+*/
+
+
+
+
+stoploss=0; //ДЛЯ РИСОВАНИЯ
+takeprofit=0;//ДЛЯ РИСОВАНИЯ
+Buy_plus=0;//ДЛЯ РИСОВАНИЯ
+Short_plus=0;//ДЛЯ РИСОВАНИЯ
+Sell_plus=Cover_plus=0;
+stoploss_plus=0; //ДЛЯ РИСОВАНИЯ
+takeprofit_plus=0;//ДЛЯ РИСОВАНИЯ
+
+
+
+i=EndValue(BarIndex());///номер поcледнего бара
+tm=TimeNum();/// масив времени баров
+dm=Day(); /// массив дата
+///процедура запись в лог файл для тестирования
+	FileNameLog="C:/ami/test/logtestgraf64.dat";
+	procedure save_log(p_string_log)
+	{
+	Lf = fopen(FileNameLog, "a");
+	fputs(Name()+";"+i+";"+dm[i]+";"+tm[i]+";"+p_string_log+"\n",Lf);
+	fclose(Lf);
+	}
+
+		
+
+//Graf parametrs
+Send_Transactions=ParamToggle("Send_Transactions","STOP_TRADE|TRADE",defaultval =0 ); //Send Transaction in file for Quik?
+You_have_to_show=ParamToggle("You_have_to_show","OHLC|Equity",defaultval =0 );
+You_have_to_see_all_lines=ParamToggle("See_all_lines","Yes|No",defaultval =0 );
+//What_line_to_show
+		
+
+//Контроль работы робота
+														run_file = fopen("C:/ami/run.et", "w");
+														fputs(Now(),run_file);
+														fclose(run_file); 
+//Контроль работы робота
+
+
+
+
+/////**************                                      СИСТЕМА ...
+/////***************************************************************************** 
+/////**************************************************************************
+/////********************************************************************
+/////**************************************************************
+/////*******************************************************	
+///Дальше идет сама система т.е. то, что реально будем торговать
+///////ОПИСАНИЕ:
+system_diskription=" Добавка по параметру+переключатель + контртренд/тренд";
+
+///////////////////////////////////////////////////////// ПАРАМЕТРЫ И УСТАНОВКИ СИСТЕМЫ///////////////
+/*
+Установки для автоматизированной торговли и ручной
+автоторговля система сама, в зависимости от состояний рынка будет определять какую систему использовать 
+при ручной торговли, что использовать определяется оператором
+Выбираем нужное остальное закоментировать
+*/
+//switchSystem = 31;//АВТОРЕЖИМ(как СУПЕР)
+switchSystem = 0;////Контренд, покупаем когда линия по верхам ниже средней(продажа наоборот)
+//switchSystem = 100000;////Тренд
+ATRopti=ATR(50);///переключение системы
+
+
+ExitALL=False; // true=одинаковый выход добавки т.е. пока основная поза открыта поза плюс держиться, false=соответственно разный выход
+Enter_plus=True; // МОЖНО ЛИ ДОБАВЛЯТЬСЯ.
+
+///////////////////////////////////////////////////+Инициализация переменных
+Seccode = "SRZ2";// Какой контракт
+//Initialize variables
+poz=0;//установили позицию в начале расчета
+poz_plus=0;//установили позицию в начале расчета
+k=k_plus=0;//бар на котором открыта позиция
+Position_price=0;//цена по которой открылись
+Position_price_plus=0;//цена по которой добавились
+profit_max=0;//Максимальная прибыль за время существования позиции
+profit_max_plus=0;
+Open_Short=1;//Флаг на вход после пересечения скользящих средних Short
+Open_Long=1;//Флаг на вход после пересечения скользящих средних Long
+stop_short=0;//счетчики стопов
+stop_long=0;//счетчики стопов
+Exit_Short=True;
+Exit_Long=True;
+Enter_Short_plus=0;//запретили вход добавочки
+Enter_Long_plus=0;//запретили вход добавочки
+prosadka=0;//Самый большой зафиксированный минус по системе
+cover_flag=0;
+sell_flag=0;
+id=0;
+sl=tp=sl_plus=tp_plus=0;
+profit=0;// результат по текущей позиции, предварительная установка
+profit_plus=0;
+rez=0;// Результат всего по данной системе
+rez_tek=0;//Результат по текущей сделке
+profit_no_exit=400;//Прибыль после достижения которой выход до пересения средних запрещен
+profit_optimize= 10;//Прибыль после достижения которой разрешен второй вход
+the_number_of_possible_additions=10; //сколько раз можно входить после выхода добавки только для разных выходов, для одинакового выхода нге имеет смысла
+i_stop=20;
+rezult=0; // результат в данной сделке после её закрытия (вспомогательная информация)
+main_pozition=1;//amount of the basic position
+plus_pozition=1;// amount of the plus position
+Curent_Equity[0]=0;
+Not_realized_profit_loss[0]=0;
+//Как будем добавляться, 0 всегда контренд, 1 - второй раз контренд и т.д.,чем больше число тем больше раз по тренду 
+How_addition=50;
+
+////////////////////////////////////////////////-Инициализация переменных
+
+///////////////////////////////////////////////////Установки системы
+
+
+
+
+
+ts=150;//отклонение от максимального максимума по прибыли, для отработки скользящий стоп
+profit_ogr=50000;//прибыль по достижению которой начинаем отслеживать скользящий стоп 
+//(если не используешь скользящий стоп установить первое значение большое (такой прибыли быть не может)
+ts_plus=150;
+profit_ogr_plus=500000;
+//////////////////////////////////////////////////Индикаторы, линии, массивы
+
+ema_switch_fast=EMA(O,55);//Переключение после стопов(сброс стопов)
+ema_switch_slow=EMA(O,123);//Переключение после стопов(сброс стопов)
+//Скользящая средняя после которой добавляемся
+EMA_for_open_plus=EMA(O,33);
+//Средняя для пересечения на выход
+ema_exit_mass=EMA(O,180);
+//для контренда, период ЕМА(О,adper) ниже(выше) которого можно открывать позицию в контренд
+EMA_for_open_poz=EMA(O,55);
+///Линия пиков
+bars=7;// колво баров за которые ищется пик
+HLine=Ref(HHV(H,bars),-1);
+LLine=Ref(LLV(L,bars),-1);
+fast=6;// быстрая скользящая средняя
+NOTfast=9;// медленная скользящая средняя
+///Адаптивные среднии по верхам
+EMA_h_fast=EMA(H,fast);
+EMA_h_NOTfast=EMA(H,NOTfast);
+///Адаптивные Среднии по низам
+EMA_l_fast=EMA(L,fast);
+EMA_l_NOTfast=EMA(L,NOTfast);
+//Средняя для выхода
+EMA_Close=EMA(C,fast);
+
+ATR_12=ATR(12);///определяем стопы;
+
+
+
+n=EndValue(BarIndex());///номер поcледнего бара
+tm=TimeNum();/// масив времени баров
+dm=Day(); /// массив дата
+///Среднии по верхам
+MA_h_fast=MA(H,fast);
+MA_h_NOTfast=MA(H,NOTfast);
+///Среднии по низам
+MA_l_fast=MA(L,fast);
+MA_l_NOTfast=MA(L,NOTfast);
+///////////////////////////////////////Procedure 
+
+											
+
+
+////////////////////////////////////////////////////КОНЕЦ ПАРАМЕТРЫ  И УСТАНОВКИ СИСТЕМЫ/////////////////////////
+
+//НАЧАЛО ЦИКЛА ТЕСТИРОВАНИЯ
+for( n = 0; n < BarCount; n++ )
+{
+if(n==0)
+{
+Lf = fopen(FileNameLog, "w");
+	fputs(Name()+"Begin-------------------------------------------------------"+"\n",Lf);
+	fclose(Lf);
+}
+
+
+//////////////////////////////////////////////////СТАРТ СИСТЕМЫ///////////////////////////////////////////
+i=n;
+
+Buy[i]=False;
+Sell[i]=False;
+Cover[i]=False;
+Short[i]=False;	
+
+
+//ПЕРЕКЛЮЧАТЕЛИ-ФЛАЖОЧКИ
+Exit_short=True;//разрешили выход шорт
+Exit_Long=True;//разрешили выход лонг
+if (poz==-1) profit=Position_price-O[i];
+if (poz_plus==-1) profit_plus=Position_price_plus-O[i];
+//profit=profit+profit_plus;
+if (poz==-1 AND profit>=profit_no_exit AND O[i] <=ema_exit_mass[i]) Exit_short=False;//Запретили выход если сильный тренд
+
+
+if (poz==1) profit=O[i]-Position_price;
+if (poz_plus==1) profit_plus=O[i]-Position_price_plus;
+//profit=profit+profit_plus;
+if (poz==1 AND profit>=profit_no_exit AND O[i] >=ema_exit_mass[i]) Exit_Long=False;//Запретили выход если сильный тренд
+
+//переключатель 
+if ((i>1 AND ema_switch_fast[i-1]>ema_switch_slow[i-1] AND  ema_switch_fast[i]<ema_switch_slow[i]) OR (i>1 AND ema_switch_fast[i-1]<ema_switch_slow[i-1] AND  ema_switch_fast[i]>ema_switch_slow[i]))
+	{
+	//open_short=1;
+	//open_long=1;
+	//stop_short=0;
+	//stop_long=-0;
+	}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////ПРАВИЛА СИСТЕМЫ/////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////Выходим Основная 
+/////////////////////////////////////////////////////STOPs/////////////////////////////////
+//switchSystem = 0;
+//if(prosadka<=1500) switchSystem = 100000;
+
+//--------------------------------------------- SHORT - stoploss
+	if (poz==-1 AND High[i]+0>=Stop_price_short AND i>k) 
+{
+	Cover[i]=True;
+	CoverPrice[i]=Stop_price_short;
+	poz=0;
+	k=i;
+	//если открытие выше стопа, закрываемся по открытию
+	if(Open[i]>Stop_price_short)
+	CoverPrice[i]=Open[i];
+	CoverPrice[i]=round(CoverPrice[i]);
+	//Считаем и пишем все в файл
+	stoploss[i]=True;//для рисования
+	rez_tek=(Position_price-CoverPrice[i])-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+if(rez<=prosadka) prosadka=rez;
+														
+	save_log("SLShort;"+CoverPrice[i]+";"+rez_tek+";"+rez);
+//Переключаем запреты	
+	stop_long=0;
+	open_long=1;
+	stop_short=stop_short+1;
+			
+			if(stop_short>=i_stop AND poz_plus==0) 
+			{
+			//switchSystem = 100000;
+			ATRopt2=SwitchSystem;
+			open_short=0;
+				//купим 
+				Buy[i]=True;
+				poz=1;
+				//сохраним номер бара на котором открыли позицию
+				k=i;
+				BuyPrice[i]=CoverPrice[i];
+				Position_price=BuyPrice[i];
+										
+				//Считаем и пишем все в файл
+				save_log("BuySwitch;"+BuyPrice[i]);
+				//Считаем и пишем все в файл											
+			}	
+}
+//--------------------------------------------END SHORT - stoploss
+
+
+//--------------------------------------------LONG - stoploss
+	if (poz==1 AND Low[i]+0<=Stop_price_long AND i>k) 
+{
+	Sell[i]=True;
+	SellPrice[i]=Stop_price_long;
+	poz=0;
+	k=i;
+//если открытие ниже стопа, выходим на открытии бара
+	if(Open[i]<Stop_price_long)
+	SellPrice[i]=Open[i];
+	SellPrice[i]=round(SellPrice[i]);
+	
+	//Считаем и пишем все в файл
+	stoploss[i]=True;//для рисования
+	rez_tek=(SellPrice[i]-Position_price)-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+	if(rez<=prosadka) prosadka=rez;
+	//k=i+1;
+														
+save_log("SLBuy;"+SellPrice[i]+";"+rez_tek+";"+rez);
+//переключаем флажочки
+	stop_short=0;
+	open_short=1;	
+	stop_long=stop_long+1;
+		if (stop_long>=i_stop AND poz==0) 
+	{
+		//switchSystem = 100000;
+		ATRopt2=SwitchSystem;
+		open_long=0;
+		//продадим
+		Short[i]=True;
+		poz=-1;
+		//сохраним номер бара на котором открыли позицию
+		k=i;
+		ShortPrice[i]=SellPrice[i];
+		Position_price=ShortPrice[i];
+							
+			
+		//Считаем и пишем все в файл
+		save_log("ShortSwitch;"+ShortPrice[i]);
+		//Считаем и пишем все в файл
+	}
+	
+}
+//--------------------------------------------------END LONG - stoploss	
+
+
+
+
+//--------------------------------------------------LONG - take profit
+	if (Exit_long==True AND poz==1 AND (High[i]+0)>=Position_price+tp AND i>k) 
+{
+	Sell[i]=True;
+	SellPrice[i]=Position_price+tp;
+	k=i;
+// если открытие выше тэйка, выходим сразу на открытии
+	if(Open[i]>Position_price+tp)
+	SellPrice[i]=Open[i];
+	SellPrice[i]=round(SellPrice[i]);
+//обнулим позицию в файле 
+	poz=0;
+//Установили бар следующего открытия позиции
+k=i;
+//if(switchSystem == 100000) switchSystem = 0;
+//if(switchSystem == 0) switchSystem = 100000;
+
+//Считаем и пишем все в файл
+	takeprofit[i]=True;//для рисования
+	rez_tek=(SellPrice[i]-Position_price)-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+if(rez<=prosadka) prosadka=rez;
+												
+	
+	save_log("TPBuy;"+SellPrice[i]+";"+rez_tek+";"+rez);//Считаем и пишем все в файл
+
+}
+//-------------------------------------------------- END LONG - take profit
+
+
+//---------------------------------------------------SHORT - take profit
+
+    if (Exit_Short==True AND poz==-1 AND (Low[i]+0)<=Position_price-tp AND i>k) 
+{
+	Cover[i]=True;
+	CoverPrice[i]=Position_price-tp;
+// если открытие ниже тэйка, выходим сразу на открытии
+	if (Open[i]<Position_price-tp)
+	CoverPrice[i]=Open[i];
+	CoverPrice[i]=round(CoverPrice[i]);
+//обнулим позицию в файле 
+	poz=0;
+//Установили бар следующего открытия позиции
+k=i;
+
+//if(switchSystem == 100000) switchSystem = 0;
+//if(switchSystem == 0) switchSystem = 100000;
+
+	takeprofit[i]=True;//для рисования
+	rez_tek=(Position_price-CoverPrice[i])-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+if(rez<=prosadka) prosadka=rez;
+												
+save_log("TPShort;"+CoverPrice[i]+";"+rez_tek+";"+rez);//Считаем и пишем все в файл
+
+}
+//---------------------------------------------------END SHORT - take profit
+
+////////////////////////////////////////////////////Скользящий стоп 
+
+//Определяем прибыль на текущем баре
+if (poz==-1) profit=Position_price-Low[i];
+if (poz==1) profit=High[i]-Position_price;
+//Максимальная прибыль за время существования позиции
+if (profit>=profit_max) profit_max=profit;
+
+if (poz==-1 AND Position_price-High[i]<profit_max-ts AND profit_max>profit_ogr )
+	{
+			 	Cover[i]=True;
+				poz=0;
+				k=i;
+				profit_max=0;
+				CoverPrice[i]=High[i];
+	}
+
+
+if (poz==1 AND Position_price-Low[i]<profit_max-ts AND profit_max>profit_ogr)
+	{
+			 	Sell[i]=True;
+				poz=0;
+				k=i;
+				profit_max=0;
+				SellPrice[i]=Low[i];
+	}
+
+//////////////////////////////////////////////////Конец Скользящий стоп
+
+/////////////////////////////////////////////////ВЫХОД ДОБАВОЧКА СТОПЫ
+if(poz_plus!=0)
+{
+//--------------------------------------------- SHORT+ - stoploss
+
+	if ((poz_plus==-1 AND Cover[i]==True AND ExitAll==True AND stoploss[i]==True) OR 
+	(poz_plus==-1 AND High[i]+0>=Position_price_plus+sl_plus AND ExitAll==False)) 
+{
+	Cover_plus[i]=True;
+	if(ExitALL==True) CoverPrice_plus[i]=CoverPrice[i];//одинаковый выход
+	if(ExitALL==False) CoverPrice_plus[i]=Position_price_plus+sl_plus;//разный выход
+	poz_plus=0;
+//если открытие выше стопа, закрываемся по открытию
+	if(Open[i]>Position_price_plus+sl_plus AND ExitAll==False) CoverPrice_plus[i]=Open[i]; //разный выход
+	CoverPrice_plus[i]=round(CoverPrice_plus[i]);
+	
+//Установили бар следующего открытия позиции
+k_plus=i;
+//
+//Open_Short=0;
+//Считаем и пишем все в файл
+	stoploss_plus[i]=True;//для рисования
+	rez_tek=(Position_price_plus-CoverPrice_plus[i])-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+	if(rez<=prosadka) prosadka=rez;
+								
+	
+	save_log("SLShort+;"+CoverPrice_plus[i]+";"+rez_tek+";"+rez);
+//Считаем и пишем все в файл
+}
+//--------------------------------------------END SHORT+ - stoploss
+
+
+//--------------------------------------------LONG+ - stoploss
+	if ((poz_plus==1 AND Sell[i]==True AND ExitAll==True AND stoploss[i]==True) OR
+	(poz_plus==1 AND Low[i]+0<=Position_price_plus-sl_plus AND ExitAll==False)) 
+{
+	Sell_plus[i]=True;
+	if(ExitALL==True) SellPrice_plus[i]=SellPrice[i];//одинаковый выход
+	if(ExitALL==False) SellPrice_plus[i]=Position_price_plus-sl_plus;//разный выход
+	poz_plus=0;
+//если открытие ниже стопа, выходим на открытии бара
+	if(Open[i]<Position_price_plus-sl_plus AND ExitAll==False) SellPrice_plus[i]=Open[i]; //разный выход
+	SellPrice_plus[i]=round(SellPrice_plus[i]);
+//Установили бар следующего открытия позиции
+k_plus=i;
+//
+//Open_Long=0;
+
+//Считаем и пишем все в файл
+	stoploss_plus[i]=True;//для рисования
+	rez_tek=(SellPrice_plus[i]-Position_price_plus)-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+if(rez<=prosadka) prosadka=rez;
+												
+
+	save_log("SLBuy+;"+SellPrice_plus[i]+";"+rez_tek+";"+rez);
+//Считаем и пишем все в файл
+}
+//--------------------------------------------------END LONG+ - stoploss	
+
+//--------------------------------------------------LONG+ - take profit
+	if ((poz_plus==1 AND Sell[i]==True AND ExitAll==True AND takeprofit[i]==True)  OR
+	(poz_plus==1 AND High[i]>=Position_price_plus+tp_plus AND ExitAll==False)) 
+{
+	Sell_plus[i]=True;
+	if(ExitALL==True) SellPrice_plus[i]=SellPrice[i];//одинаковый выход
+	if(ExitALL==False) SellPrice_plus[i]=Position_price_plus+tp_plus;//разный выход
+// если открытие выше тэйка, выходим сразу на открытии
+	if(Open[i]>Position_price_plus+tp_plus AND ExitAll==False) SellPrice_plus[i]=Open[i];//разный выход
+	SellPrice_plus[i]=round(SellPrice_plus[i]);
+	poz_plus=0;
+//Установили бар следующего открытия позиции
+k_plus=i;
+//Считаем и пишем все в файл
+	takeprofit_plus[i]=True;//для рисования
+	rez_tek=(SellPrice_plus[i]-Position_price_plus)-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+if(rez<=prosadka) prosadka=rez;
+					
+	save_log("TPBuy+;"+SellPrice[i]+";"+rez_tek+";"+rez);
+//Считаем и пишем все в файл
+}
+//-------------------------------------------------- END LONG+ - take profit
+
+
+//---------------------------------------------------SHORT+ - take profit
+    if ((poz_plus==-1 AND Cover[i]==True AND ExitAll==True AND takeprofit[i]==True) OR
+	(poz_plus==-1 AND Low[i]<=Position_price_plus-tp_plus AND ExitAll==False) ) 
+{
+	Cover_plus[i]=True;
+	if (ExitAll==True) CoverPrice_plus[i]=CoverPrice[i];//одинаковый выход
+	if (ExitAll==False) CoverPrice_plus[i]=Position_price_plus-tp_plus;//разный выход
+// если открытие ниже тэйка, выходим сразу на открытии
+	if (Open[i]<Position_price_plus-tp_plus AND ExitAll==False) CoverPrice_plus[i]=Open[i];
+	CoverPrice_plus[i]=round(CoverPrice_plus[i]);
+//обнулим позицию в файле 
+	poz_plus=0;
+//Установили бар следующего открытия позиции
+k_plus=i;
+//Считаем и пишем все в файл
+	takeprofit_plus[i]=True;//для рисования
+	rez_tek=(Position_price_plus-CoverPrice_plus[i])-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+if(rez<=prosadka) prosadka=rez;
+													
+	save_log("TPShort+;"+CoverPrice_plus[i]+";"+rez_tek+";"+rez);
+//Считаем и пишем все в файл
+}
+//---------------------------------------------------END SHORT+ - take profit
+
+////////////////////////////////////////////////////Скользящий стоп плюс +
+//++++++++++++++++++++Traling Stop
+//ts=150;//отклонение от максимального максимума по прибыли, для отработки скользящий стоп
+//profit_ogr=50000;//прибыль по достижению которой начинаем отслеживать скользящий стоп 
+//(если не используешь скользящий стоп установить первое значение большое (такой прибыли быть не может)
+
+//Определяем прибыль на текущем баре
+if (poz_plus==-1) profit_plus=Position_price_plus-Open[i];
+if (poz_plus==1) profit_plus=Open[i]-Position_price_plus;
+//Максимальная прибыль за время существования позиции
+if (profit_plus>=profit_max_plus) profit_max_plus=profit_plus;
+
+if (poz_plus==-1 AND Position_price-Open[i]<profit_max_plus-ts AND profit_max_plus>profit_ogr )
+	{
+			 	Cover_plus[i]=True;
+				poz_plus=0;
+				profit_max_plus=0;
+				CoverPrice_plus[i]=Open[i];
+				trailing_stop_plus[i]=1;//стрелочки на график
+	//Считаем и пишем все в файл
+	rez_tek=(Position_price_plus-CoverPrice_plus[i])-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+	if(rez<=prosadka) prosadka=rez;
+	save_log("Traling_stop_Short+;"+CoverPrice_plus[i]+";"+rez_tek+";"+rez);
+	//Считаем и пишем все в файл		
+				
+				
+				
+	}
+
+
+if (poz==1 AND Position_price-Open[i]<profit_max_plus-ts AND profit_max_plus>profit_ogr)
+	{
+			 	Sell_plus[i]=True;
+				poz_plus=0;
+				profit_max_plus=0;
+				SellPrice_plus[i]=Open[i];
+				trailing_stop_plus[i]=1;//стрелочки на график
+	
+	//Считаем и пишем все в файл
+	rez_tek=(SellPrice_plus[i]-Position_price_plus)-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+	if(rez<=prosadka) prosadka=rez;
+	save_log("Traling_stop_Buy+;"+SellPrice_plus[i]+";"+rez_tek+";"+rez);
+	//Считаем и пишем все в файл			
+				
+	}
+//////////////////////////////////////////////////Конец Скользящий стоп +
+}
+////////////////////////////////////////////////////КОНЕЦ ВЫХОД ДОБАВОЧКА СТОПЫ
+
+
+
+
+//Принимаем решение на вход выход по закрытию бара, поэтому
+i=n-1;
+if(i<0) i=0;
+
+//---------------------------------------------------Выходим по правилам системы
+//---------------------------------------------------SELL 
+	if 
+		(
+		Exit_long==True 
+		AND poz==1 
+		AND i>k
+	
+		AND High [i]+0>Lline[i]+0 
+		AND Low[i]+0<Lline[i]+0 
+		AND EMA_l_fast[i]+0<=EMA_l_NOTfast[i]+0 
+		AND EMA_l_fast[i]>0 
+		AND EMA_close[i]<=Lline[i]
+		) 
+			{
+				Sell[i]=True;
+				SellPrice[i]=Close[i];
+				SellPrice[i]=round(SellPrice[i]);
+				Sell_flag=i+1;
+				poz=0;
+				k=i;	
+								
+				//Считаем и пишем все в файл
+				rez_tek=(SellPrice[i]-Position_price)-20;//результат в текущей сделки
+				rez=rez+rez_tek;//результат всего
+				if(rez<=prosadka) prosadka=rez;
+				save_log("Sell;"+SellPrice[i]+";"+rez_tek+";"+rez);
+				//Считаем и пишем все в файл
+			}
+//--------------------------------------------------END SELL
+
+//--------------------------------------------------COVER
+	if 
+		(
+		Exit_Short==True 
+		AND poz==-1 
+		AND i>k 
+		
+		AND Low[i]<Hline[i] 
+		AND High[i]>Hline[i] 
+		AND EMA_h_fast[i]>=EMA_h_NOTfast[i] 
+		AND EMA_h_fast[i]>0 
+		AND EMA_close[i]>=Hline[i]
+		) 
+			
+			{
+				Cover[i]=True;
+				CoverPrice[i]=Close[i];
+				Cover_flag=i+1;		
+				poz=0;
+				k=i;//бар следующего открытия позиции
+				CoverPrice[i]=round(CoverPrice[i]);
+	
+				//Считаем и пишем все в файл
+				rez_tek=(Position_price-CoverPrice[i])-20;//результат в текущей сделки
+				rez=rez+rez_tek;//результат всего
+				if(rez<=prosadka) prosadka=rez;
+				save_log("Cover;"+CoverPrice[i]+";"+rez_tek+";"+rez);
+				//Считаем и пишем все в файл
+			}
+//-------------------------------------------------- END COVER			
+
+/////////////////////////////////////////////////////ВЫХОД ДОБАВОЧКА ПРАВИЛА СИСТЕМЫ
+//---------------------------------------------------Выходим по правилам системы
+
+//---------------------------------------------------SELL+
+	if ((ExitAll==True AND Exit_long==True AND poz_plus==1 AND Sell[i]==True) OR
+		(poz_plus==1 AND High [i]+0>Lline[i]+0 AND Low[i]+0<Lline[i]+0 AND 
+	EMA_l_fast[i]+0<=EMA_l_NOTfast[i]+0  AND EMA_l_fast[i]>0 AND EMA_close[i]<=Lline[i] AND ExitAll==False)) 
+{
+//
+	Sell_plus[i]=True;
+	SellPrice_plus[i]=Close[i];
+	SellPrice_plus[i]=round(SellPrice_plus[i]);
+//
+	poz_plus=0;
+											
+	
+//Считаем и пишем все в файл
+	rez_tek=(SellPrice_plus[i]-Position_price_plus)-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+if(rez<=prosadka) prosadka=rez;
+	save_log("Sell+;"+SellPrice_plus[i]+";"+rez_tek+";"+rez);
+//Считаем и пишем все в файл
+//--------------------------------------------------END SELL+
+
+}
+//--------------------------------------------------COVER+
+	if ((ExitAll==True AND Exit_short==True AND poz_plus==-1 AND Cover[i]==True ) OR
+	(poz_plus==-1 AND Low[i]<Hline[i] AND High[i]>Hline[i] AND
+	EMA_h_fast[i]>=EMA_h_NOTfast[i]  AND EMA_h_fast[i]>0 AND EMA_close[i]>=Hline[i] AND ExitAll==False)) 
+{
+    Cover_plus[i]=True;
+	CoverPrice_plus[i]=Close[i];
+	poz_plus=0;
+	CoverPrice_plus[i]=round(CoverPrice_plus[i]);
+//Установили бар следующего открытия позиции
+												
+//Считаем и пишем все в файл
+	rez_tek=(Position_price_plus-CoverPrice_plus[i])-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+if(rez<=prosadka) prosadka=rez;
+	save_log("Cover+;"+CoverPrice_plus[i]+";"+rez_tek+";"+rez);
+//Считаем и пишем все в файл
+//---------------------------------------------------END COVER+
+}
+
+///////////////////////////////////КОНЕЦ ВЫХОД ДОБАВОЧКА ПРАВИЛА СИСТЕМЫ////////////////////////////////////
+
+
+//switchSystem=1-Contr_trend
+//switchSystem=2-Trend	
+//////////////////////////////////////////////////////////////////////////////////// Входим
+//----------------------------------------------------------------------LONG
+	if
+	(
+		poz_plus==0
+		AND Open_Long==1
+		AND 	poz==0 
+		AND i>=sell_flag
+		AND i>=k 
+	
+			AND 
+			(
+			
+				(
+					Low[i]<Hline[i] AND High[i]>Hline[i]  
+					AND EMA_h_fast[i]>=EMA_h_NOTfast[i] 
+					AND EMA_for_open_poz[i]>=Hline[i] 
+					AND ATRopti[i]>=switchsystem
+				)
+			
+					OR
+			
+				(
+					Low[i]<Hline[i] AND High[i]>Hline[i] 
+					AND EMA_h_fast[i]>=EMA_h_NOTfast[i] 
+					AND	ATRopti[i]<switchsystem
+				)
+			)
+	)
+	
+	
+{ 
+	Buy[i]=True;
+	poz=1;
+//сохраним номер бара на котором открыли позицию
+	k=i;
+	BuyPrice[i]=Close[i];
+	BuyPrice[i]=round(BuyPrice[i]);
+//обнулил счетчик стопов
+stop_short=0;//счетчики стопов
+
+ATRopt2=SwitchSystem;
+Open_Short=1;
+//разрешили вход добавки
+enter_long_plus=0;
+//сохраним цену открытия позиции	
+Position_price=BuyPrice[i];
+//Посчитали стопы
+tp=ATR_12[i]*37;
+if (tp<450) tp=tp*ATR_12[i];
+sl=ATR_12[i]*10;
+if(sl>150)sl=150;
+Stop_price_long=Position_price-sl;
+								
+
+//Считаем и пишем все в файл
+	save_log("Buy;"+BuyPrice[i]+" tp="+tp);
+//Считаем и пишем все в файл
+//----------------------------------------------------------------------END LONG
+} 
+
+
+//switchSystem=1-Contr_trend
+//switchSystem=2-Trend	
+//----------------------------------------------------------------------SHORT
+	if 
+	(
+		poz_plus==0
+		AND Open_Short==1
+		AND 	poz==0 
+		AND i>=cover_flag
+		AND i>=k
+	
+		AND
+		(
+		
+			(
+				High[i]>Lline[i] AND Lline[i]>Low[i] 
+				AND EMA_l_fast[i]<=EMA_l_NOTfast[i] 
+				AND EMA_for_open_poz[i]<=Lline[i] 
+				AND ATRopti[i]>=switchsystem
+			) 
+					
+				OR
+					
+			(
+				High[i]>Lline[i] 
+				AND Lline[i]>Low[i] 
+				AND EMA_l_fast[i]<=EMA_l_NOTfast[i] 
+				AND ATRopti[i]<switchsystem
+			)
+		
+		)
+	)	
+{ 
+	Short[i]=True;
+	poz=-1;
+//сохраним номер бара на котором открыли позицию
+	k=i;
+	ShortPrice[i]=Close[i];
+	ShortPrice[i]=round(ShortPrice[i]);
+//обнулил счетчик стопов
+stop_long=0;//счетчики стопов
+Open_Long=1;
+
+ATRopt2=SwitchSystem;
+//разрешили вход добавки
+enter_short_plus=0;
+//сохраним цену открытия позиции
+	Position_price=ShortPrice[i];
+//Посчитали стопы
+	tp=ATR_12[i]*37;
+if (tp<450) tp=tp*ATR_12[i];
+	sl=ATR_12[i]*10;
+	if(sl>150)sl=150;
+	Stop_price_short=Position_price+sl;
+								
+
+//Считаем и пишем все в файл
+	save_log("Short;"+ShortPrice[i]+" tp="+tp);
+//Считаем и пишем все в файл
+//----------------------------------------------------------------------END SHORT
+}
+
+
+
+if(enter_plus==True) //authorized additive or not
+{
+//----------------------------------------------------------------------Добавляемся
+if (poz==-1) profit=Position_price-Low[i];
+if (poz==1) profit=High[i]-Position_price;
+
+//----------------------------------------------------------------------SHORT+
+if(
+	i>=k_plus
+	AND poz==-1
+	AND enter_short_plus<the_number_of_possible_additions
+	AND profit>=profit_optimize 
+	AND poz_plus==0 
+	AND  i>=cover_flag 
+	AND
+	(
+		
+			(
+				High[i]>Lline[i] AND Lline[i]>Low[i] 
+				AND EMA_l_fast[i]<=EMA_l_NOTfast[i] 
+				AND EMA_for_open_poz[i]<=Lline[i] 
+				AND enter_short_plus>=How_addition
+			) 
+					
+				OR
+					
+			(
+					High[i]>Lline[i] 
+					AND Lline[i]>Low[i]  
+					AND EMA_l_fast[i]<=EMA_l_NOTfast[i] 
+					AND EMA_for_open_plus[i]>Hline[i]
+					AND enter_short_plus<How_addition
+			)
+		
+	)
+	
+	
+	
+	
+	
+
+
+	) 
+
+
+ {
+	Short_plus[i]=True;
+	poz_plus=-1;
+//Save number for the bar which is open position
+	k_plus=i;
+	ShortPrice_plus[i]=Close[i];
+	ShortPrice_plus[i]=round(ShortPrice_plus[i]);
+//запретили вход добавки
+enter_short_plus=enter_short_plus+1;
+//сохраним цену открытия позиции
+	Position_price_plus=ShortPrice_plus[i];
+//Посчитали стопы
+	//Посчитали стопы
+	tp_plus=ATR_12[i]*37; if(tp_plus<=390); tp_plus=tp_plus*ATR_12[i];
+	sl_plus=sl;
+//Считаем и пишем все в файл
+	save_log("Short+;"+ShortPrice_plus[i]);
+//Считаем и пишем все в файл
+//----------------------------------------------------------------------END SHORT+
+
+}
+//----------------------------------------------------------------------LONG+	
+if(
+	i>=k_plus
+	AND enter_Long_plus<the_number_of_possible_additions 
+	AND profit>=profit_optimize 
+	AND  poz_plus==0 
+	AND poz==1 
+	AND  i>=sell_flag 
+	AND
+		(
+			
+				(
+					Low[i]<Hline[i] AND High[i]>Hline[i]  
+					AND EMA_h_fast[i]>=EMA_h_NOTfast[i] 
+					AND EMA_for_open_poz[i]>=Hline[i] 
+					AND enter_long_plus>=How_addition
+				)
+			
+					OR
+			
+				(
+					Low[i]<Hline[i] 
+					AND High[i]>Hline[i]  
+					AND EMA_h_fast[i]>=EMA_h_NOTfast[i] 
+					AND EMA_for_open_plus[i]<Hline[i]
+					AND enter_long_plus<How_addition
+				)
+		)
+		
+	)
+{ 
+	Buy_plus[i]=True;
+	poz_plus=1;
+//сохраним номер бара на котором открыли позицию
+	k_plus=i;
+	BuyPrice_plus[i]=Close[i];
+	BuyPrice_plus[i]=round(BuyPrice_plus[i]);
+//сохраним цену открытия позиции	
+Position_price_plus=BuyPrice_plus[i];
+//запретили вход добавки
+enter_long_plus=enter_long_plus+1;
+//Посчитали стопы
+//Посчитали стопы
+	tp_plus=ATR_12[i]*37; if(tp_plus<=390); tp_plus=tp_plus*ATR_12[i];
+	sl_plus=sl;
+
+
+	
+	
+//Считаем и пишем все в файл
+	save_log("Buy+;"+BuyPrice_plus[i]);
+//Считаем и пишем все в файл
+}
+//----------------------------------------------------------------------END LONG+
+
+
+}
+//---END authorized additive or not
+
+////////////////////Calculate Curent  Equity and Not realized profit / loss 
+		
+			
+			Curent_Equity[i]=rez;
+			if (poz==1) Not_realized_profit_loss[i]=rez+(Open[i]-Position_price);
+			if (poz_plus==1 AND poz==1) Not_realized_profit_loss[i]=Not_realized_profit_loss[i]+(Open[i]-Position_price_plus);
+			if (poz_plus==1 AND poz==0) Not_realized_profit_loss[i]=rez+(Open[i]-Position_price_plus);
+			
+			if (poz==-1) Not_realized_profit_loss[i]=rez+(Position_price-Open[i]);
+			if (poz_plus==-1 AND poz==-1) Not_realized_profit_loss[i]=Not_realized_profit_loss[i]+(Position_price_plus-Open[i]);
+			if (poz_plus==-1 AND poz==0) Not_realized_profit_loss[i]=rez+(Position_price_plus-Open[i]);
+			
+			if (poz_plus==0 AND poz==0) Not_realized_profit_loss[i]=rez;
+		
+}
+
+////////////////////////////////////////////ЭТО КОНЕЦ ЦИКЛА//////////////////////////
+/////***************************************************************************** СИСТЕМА ...
+/////**************************************************************************
+/////********************************************************************
+/////**************************************************************
+/////*******************************************************
+
+
+
+
+
+//SEND  in to transaction file
+								transaction_poz=(poz*main_pozition+poz_plus*plus_pozition);// calculate pozition
+if (Send_Transactions==1)
+{
+
+
+															
+															trans=fopen("C:/ami/Ami_Pozition_from_Ami.et", "w");
+															string=NumToStr(transaction_poz, format = 1.0, separator=False);
+															fputs(string,trans);
+															fclose(trans);
+//SEND  in to transaction file	
+}
+
+i=i+1;//Прибавили то, что отняли
+i=EndValue (BarIndex());
+
+//ЕСЛИ ОСТАЛАСЬ ПОЗИЦИЯ ОТКРЫТА ПОСЧИТАЕМ ТЕКУЩИЙ РЕЗУЛЬТАТ
+if (poz==-1)
+{
+	//Считаем и пишем все в файл
+	CoverPrice[i]=Close[i];
+	rez_tek=(Position_price-CoverPrice[i])-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+if(rez<=prosadka) prosadka=rez;
+	save_log("ENDCover;"+CoverPrice[i]+";"+rez_tek+";"+rez);
+	//Считаем и пишем все в файл
+}
+
+
+//Добавочка
+if(poz_plus==-1)
+{
+CoverPrice[i]=Close[i];
+	rez_tek=(Position_price_plus-CoverPrice[i])-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+if(rez<=prosadka) prosadka=rez;
+	save_log("ENDCover+;"+CoverPrice[i]+";"+rez_tek+";"+rez);
+}
+//Добавочка
+
+
+
+
+if (poz==1)
+{
+//Считаем и пишем все в файл
+	SellPrice[i]=Close[i];
+	rez_tek=(SellPrice[i]-Position_price)-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+if(rez<=prosadka) prosadka=rez;
+	save_log("ENDSell;"+SellPrice[i]+";"+rez_tek+";"+rez);
+//Считаем и пишем все в файл
+}
+
+//Добавочка
+if(poz_plus==1)
+{
+SellPrice_plus[i]=Close[i];
+	rez_tek=(SellPrice_plus[i]-Position_price_plus)-20;//результат в текущей сделки
+	rez=rez+rez_tek;//результат всего
+if(rez<=prosadka) prosadka=rez;
+	save_log("ENDSell+;"+SellPrice_plus[i]+";"+rez_tek+";"+rez);
+}
+//Добавочка
+
+
+//ИТОГО
+	save_log("*********************TOTAL=;"+rez);
+	//-До сюда вставляем в оптимизатор
+	////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////
+	
+
+////////////////////Calculate Curent  Equity and Not realized profit / loss
+			Curent_Equity[i]=rez;
+		   Not_realized_profit_loss[i]=rez;
+
+
+			
+/////////////////////////////////////////////
+/////////////////////////////////////////////
+/////////////////////////////////////////////
+/////////////////////////////////////////////                                   Output  to graf                                     ///////////////////////////////
+/////////////////////////////////////////////
+/////////////////////////////////////////////
+/////////////////////////////////////////////
+
+GfxSelectFont("Verdana",7, 300 ); 
+// Control RUN
+run_file = fopen("C:/ami/run.et", "r");
+run=fgets(run_file);
+fclose(run_file);
+i=EndValue (BarIndex());
+
+GfxDrawText( "Running= "+run, 7,25, 215,90, format = 0 );
+GfxDrawText("i="+NumToStr(i, format = 1.0, separator=False),7,40, 215,190, format = 0 ); 
+GfxDrawText("k="+k+" ",70,40, 215,190, format = 0 ); 
+GfxDrawText( "LastPrice= "+NumToStr(Close[i], format = 1.0, separator=True), 7,55, 215,150, format = 0 );
+GfxDrawText( "PositionAmi="+transaction_poz,7, 70, 500,550, format = 0 );
+// Pozition Quik from Quik
+quik_file = fopen("C:/ami/Quik_pozition_from_quik.et", "r");
+quik_poz=fgets(quik_file);
+fclose(quik_file);
+GfxDrawText( "PositionQuik="+quik_poz,95, 70, 500,550, format = 0 );
+
+i=EndValue (BarIndex());
+t=DateTime();//Date and time first bar
+GfxDrawText( "Date and time first bar = " + DateTimeToStr( t[0] ) ,7, 85, 400,550, format = 0 );//Date and time first bar
+if (Send_Transactions==1) {Color=colorGreen; Action="TRADE - SEND TRANSACTIONS";}
+if (Send_Transactions==0) {Color=colorRed; Action="STOP TRADE - TRANSACTIONS DONT SEND";}
+GfxSetTextColor(Color); 
+GfxSelectFont("Verdana",9, 300 ); 
+GfxDrawText( "ACTION="+Action,7, 100, 500,550, format = 0 );
+
+//Напечатаем результат на график
+if (rez>0) Color=colorGreen;
+if (rez<0) Color=colorRed;
+GfxSetTextColor(Color); 
+GfxSelectFont("Verdana",9, 300 ); 
+GfxDrawText( "Total="+rez,7, 115, 500,550, format = 0 );
+GfxSelectFont("Verdana",7, 300 ); 
+GfxDrawText( system_diskription,0, 0, 400,550, format = 0 );
+
+//
+/////////////////////////////////////////////                                   Output  to graf                                     ///////////////////////////////
+//																						Charts and arow                                                     
+
+//Wath You_have_to_show
+if(You_have_to_show==0)//Graf
+{ 
+
+		if (You_have_to_see_all_lines==0)//Show all lines, for analisis 
+		{
+
+			PlotOHLC( Open,  High,  Low,  Close, "", colorBlack, styleCandle | styleThick  );
+			_SECTION_BEGIN("Volume");
+			Plot( Volume, _DEFAULT_NAME(), ParamColor("Color", colorLavender ), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 2 );
+			_SECTION_END();
+		//Line for open
+		Plot( EMA_for_open_poz, "EMA_for_open_poz", colorBlue, styleLine); 
+		Plot( HLine, "HLine", colorBlack, styleLine); 
+		Plot( LLine, "LLine", colorBlack, styleLine); 
+				
+		Plot( EMA_h_fast, "EMA_h_fast", colorGreen, styleLine); 
+		Plot( EMA_h_NOTfast, "EMA_h_NOTfast", colorRed, styleLine); 
+		
+		Plot( EMA_l_fast, "EMA_l_fast", colorGreen, styleLine); 
+		Plot( EMA_l_NOTfast, "EMA_l_NOTfast", colorRed, styleLine); 
+				
+		//Line for close
+		Plot( ema_exit_mass, "ema_exit_mass", colorGreen, styleLine ); 
+		Plot( EMA_Close, "EMA_Close", colorYellow, styleLine); 
+		
+		//Line for plus
+		Plot( EMA_for_open_plus, "EMA_for_open_plus", colorRed, styleLine ); 
+		
+		}
+		
+		if (You_have_to_see_all_lines==1)//Show Yellow
+		{
+		PlotOHLC( Open,  High,  Low,  Close, "", colorYellow, styleBar | styleThick  );
+		_SECTION_BEGIN("Volume");
+		Plot( Volume, _DEFAULT_NAME(), ParamColor("Color", colorLavender ), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 2 );
+		_SECTION_END();
+
+		//**************************This for arrow and indicators output
+		
+		PlotShapes(shapeSmallCircle*stoploss , colorRed, 0, C,-20);
+		PlotShapes(shapeSmallCircle*takeprofit, colorGreen, 0, C,-20);
+		PlotShapes(shapeUpArrow*Buy, colorGreen, 0, C, -20);
+		PlotShapes(shapeDownArrow*Short, colorRed, 0, C,-20);
+		PlotShapes(shapeDownArrow*Sell , colorGreen, 0, C, -30);
+		PlotShapes(shapeUpArrow*Cover , colorRed, 0, C, -30);
+
+		PlotShapes(shapeHollowUpArrow*Buy_plus, colorGreen, 0, C, -10);
+		PlotShapes(shapeHollowDownArrow*Short_plus, colorRed, 0, C,-10);
+		PlotShapes(shapeHollowSmallCircle*stoploss_plus , colorRed, 0, C,-10);
+		PlotShapes(shapeHollowSmallCircle*takeprofit_plus, colorGreen, 0, C,-10);
+		PlotShapes(shapeHollowDownArrow*Sell_plus, colorGreen, 0, C, -40);
+		PlotShapes(shapeHollowUpArrow*Cover_plus, colorRed, 0, C, -40);
+
+		Plot( C, "Close", colorYellow, styleLine );
+		}
+ 
+}
+
+if(You_have_to_show==1)//Equity
+{
+Plot( Not_realized_profit_loss, "Not realized profit / loss", colorRed, styleLine ); 
+Plot( Curent_Equity, "Curent profit / loss", colorGreen, styleLine ); 
+}

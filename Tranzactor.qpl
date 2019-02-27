@@ -1,0 +1,230 @@
+PORTFOLIO_EX Tranzactor;
+DESCRIPTION Deal_Trades;
+CLIENTS_LIST ALL_CLIENTS;
+FIRMS_LIST FIRM_ID;
+
+USE_CASE_SENSITIVE_CONSTANTS
+PROGRAM	
+'-Initialization variables
+
+instrum="SRH3" '-- big character how in sTOck exchange
+error=0
+NEW_GLOBAL ("trans_id", 1)
+NEW_GLOBAL ("count", 1)
+time_FOR_wait_transaction=1000
+Otstup=15
+quantity=0
+s=0
+
+trans_params = CREATE_MAP()
+trans_params = SET_VALUE (trans_params, "CLASSCODE", "SPBFUT")
+trans_params = SET_VALUE (trans_params, "SECCODE", instrum)
+trans_params = SET_VALUE (trans_params, "ACCOUNT", "15003mo")
+trans_params = SET_VALUE (trans_params, "CLIENT_CODE", "")
+trans_params = SET_VALUE (trans_params, "TYPE", "L")
+
+'---find instrument in table FUTURES_CLIENT_HOLDINGS
+
+n=GET_NUMBER_OF ("FUTURES_CLIENT_HOLDINGS")
+FOR i FROM 1 TO n
+	IF ( GET_VALUE ( GET_ITEM ("FUTURES_CLIENT_HOLDINGS",i),"FIRMID")=="SPBFUT" and 	GET_VALUE ( GET_ITEM ("FUTURES_CLIENT_HOLDINGS",i),"SECCODE")==instrum)
+	s=i
+	END IF
+END FOR
+
+'---get position quik
+map_position= GET_ITEM ("FUTURES_CLIENT_HOLDINGS",s)
+firm= GET_VALUE (map_position,"FIRMID")
+position_quik= GET_VALUE (map_position,"TOTAL_NET")+0
+
+'---get position ami
+position_ami=READ_LINE ("C:\ami\Ami_pozition_from_ami.et", 1, error)+0
+
+'---get last price
+LastPrice =GET_PARAM ("SPBFUT",instrum, "LAST")
+
+	'-exam for Buy
+	IF position_ami > position_quik
+	position_ami_time=position_ami
+	quantity=position_ami-position_quik
+	'-send Buy
+	trans_id=trans_id+1
+	trans_params = SET_VALUE (trans_params, "TRANS_ID", trans_id & "")
+	trans_params = SET_VALUE (trans_params, "ACTION", "NEW_ORDER")
+	trans_params = SET_VALUE (trans_params, "OPERATION", "B")
+	trans_params = SET_VALUE (trans_params, "QUANTITY", quantity & "")
+	trans_params = SET_VALUE (trans_params, "PRICE", (LastPrice+Otstup) & "")
+	'-send
+	trans_result = SEND_TRANSACTION (60, trans_params)
+	curr_datetime=GET_DATETIME ()
+	WRITELN ("C:\ami\quik_transactoins_log.log", GET_VALUE (curr_datetime, "DATETIME") &" CLASSCODE:"& GET_VALUE (trans_params, "CLASSCODE")&" SECCODE:"& GET_VALUE (trans_params, "SECCODE")&" ACCOUNT:"& GET_VALUE (trans_params, "ACCOUNT")&" CLIENT_CODE:"& GET_VALUE (trans_params, "CLIENT_CODE")&" TYPE:"& GET_VALUE (trans_params, "TYPE")&" TRANS_IC:"& GET_VALUE (trans_params, "TRANS_ID")&" ACTION:"& GET_VALUE (trans_params, "ACTION") &" OPERATION:"& GET_VALUE (trans_params, "OPERATION")&" QUANTITY: "& GET_VALUE (trans_params, "QUANTITY") &" PRICE:"& GET_VALUE (trans_params, "PRICE"))
+	WRITELN ("C:\ami\quik_transactoins_log.log", GET_VALUE (curr_datetime, "DATETIME") & ": " & "Result: " & GET_VALUE (trans_result, "RE-SULT") & ", Result_ex: " & GET_VALUE (trans_result, "RESULT_EX") & ", OrderNum: " & GET_VALUE (trans_result, "OR-DER_NUMBER") & ", Description: " & GET_VALUE (trans_result, "DESCRIPTION"))
+	quantity=quantity&" Buy"
+	
+		'--Delay
+		FOR i FROM 1 TO time_FOR_wait_transaction
+			'---get position ami
+						position_ami=READ_LINE ("C:\ami\Ami_pozition_from_ami.et", 1, error)+0
+				IF position_ami!=position_ami_time
+				i=time_FOR_wait_transaction+1
+				END IF
+			'---get position quik
+		map_position= GET_ITEM ("FUTURES_CLIENT_HOLDINGS",s)
+		position_quik= GET_VALUE (map_position,"TOTAL_NET")+0
+				IF position_ami==position_quik
+				i=time_FOR_wait_transaction+1
+				END IF	
+		END FOR
+	END IF
+	
+'---get position ami
+position_ami=READ_LINE ("C:\ami\Ami_pozition_from_ami.et", 1, error)+0	
+
+		'- exam for Sell
+		IF position_ami < position_quik
+		position_ami_time=position_ami
+		quantity=position_quik-position_ami
+		trans_id=trans_id+1
+		'-Send sell
+		trans_params = SET_VALUE (trans_params, "TRANS_ID", trans_id & "")
+		trans_params = SET_VALUE (trans_params, "ACTION", "NEW_ORDER")
+		trans_params = SET_VALUE (trans_params, "OPERATION", "S")
+		trans_params = SET_VALUE (trans_params, "QUANTITY", quantity & "")
+		trans_params = SET_VALUE (trans_params, "PRICE", (LastPrice-Otstup) & "")
+		trans_result = SEND_TRANSACTION (60, trans_params)
+		curr_datetime=GET_DATETIME ()
+		WRITELN ("C:\ami\quik_transactoins_log.log", GET_VALUE (curr_datetime, "DATETIME") &" CLASSCODE:"& GET_VALUE (trans_params, "CLASSCODE")&" SECCODE:"& GET_VALUE (trans_params, "SECCODE")&" ACCOUNT:"& GET_VALUE (trans_params, "ACCOUNT")&" CLIENT_CODE:"& GET_VALUE (trans_params, "CLIENT_CODE")&" TYPE:"& GET_VALUE (trans_params, "TYPE")&" TRANS_IC:"& GET_VALUE (trans_params, "TRANS_ID")&" ACTION:"& GET_VALUE (trans_params, "ACTION") &" OPERATION:"& GET_VALUE (trans_params, "OPERATION")&" QUANTITY: "& GET_VALUE (trans_params, "QUANTITY") &" PRICE:"& GET_VALUE (trans_params, "PRICE"))
+		WRITELN ("C:\ami\quik_transactoins_log.log", GET_VALUE (curr_datetime, "DATETIME") & ": " & "Result: " & GET_VALUE (trans_result, "RE-SULT") & ", Result_ex: " & GET_VALUE (trans_result, "RESULT_EX") & ", OrderNum: " & GET_VALUE (trans_result, "OR-DER_NUMBER") & ", Description: " & GET_VALUE (trans_result, "DESCRIPTION"))
+		quantity=quantity&" Sell"
+		
+		'--Delay
+		FOR i FROM 1 TO time_FOR_wait_transaction
+			'---get position ami
+			position_ami=READ_LINE ("C:\ami\Ami_pozition_from_ami.et", 1, error)+0
+				IF position_ami!=position_ami_time
+				i=time_FOR_wait_transaction+1
+				END IF
+			'---get position quik
+			map_position= GET_ITEM ("FUTURES_CLIENT_HOLDINGS",s)
+			position_quik= GET_VALUE (map_position,"TOTAL_NET")+0
+				IF position_ami==position_quik
+				i=time_FOR_wait_transaction+1
+				END IF	
+				
+		END FOR
+	END IF
+
+
+'---kill orders
+index=GET_NUMBER_OF ("ORDERS")
+FOR i FROM 1 TO index
+map_demand= GET_ITEM ("ORDERS",i)
+
+	IF ( GET_VALUE (map_demand,"STATUS")=="ACTIVE") '--exam active
+	kill_orders_nomber=GET_VALUE (map_demand,"NUMBER")
+	trans_id=trans_id+1
+	trans_params = SET_VALUE (trans_params, "TRANS_ID", trans_id & "")
+	trans_params = SET_VALUE (trans_params, "ACTION", "KILL_ORDER")
+	trans_params = SET_VALUE (trans_params, "ORDER_KEY",kill_orders_nomber &"" )
+	trans_result = SEND_TRANSACTION (60, trans_params)
+	curr_datetime=GET_DATETIME ()
+	WRITELN ("C:\ami\quik_transactoins_log.log", GET_VALUE (curr_datetime, "DATETIME") & ": " & "Result: " & GET_VALUE (trans_result, "RE-SULT") & ", Result_ex: " & GET_VALUE (trans_result, "RESULT_EX") & ", OrderNum: " & GET_VALUE (trans_result, "OR-DER_NUMBER") & ", Description: " & GET_VALUE (trans_result, "DESCRIPTION"))
+	WRITELN ("C:\ami\quik_transactoins_log.log", GET_VALUE (curr_datetime, "DATETIME") &" CLASSCODE:"& GET_VALUE (trans_params, "CLASSCODE")&" SECCODE:"& GET_VALUE (trans_params, "SECCODE")&" ACCOUNT:"& GET_VALUE (trans_params, "ACCOUNT")&" CLIENT_CODE:"& GET_VALUE (trans_params, "CLIENT_CODE")&" TYPE:"& GET_VALUE (trans_params, "TYPE")&" TRANS_IC:"& GET_VALUE (trans_params, "TRANS_ID")&" ACTION:"& GET_VALUE (trans_params, "ACTION") &" OPERATION:"& GET_VALUE (trans_params, "OPERATION")&" QUANTITY: "& GET_VALUE (trans_params, "QUANTITY") &" PRICE:"& GET_VALUE (trans_params, "PRICE"))
+	END IF
+END FOR
+
+
+IF count>100
+count=0
+END IF
+count=count+1
+
+IF trans_id>1000
+trans_id=0
+END IF
+
+
+'---save control log
+curr_datetime=GET_DATETIME ()
+WRITELN ("C:\ami\control_log.log", GET_VALUE (curr_datetime, "DATETIME") &"  position_ami="& (position_ami & "") & " position_quik="& (position_quik & ""))
+'---save pozition quik from quik
+CLEAR_FILE ("C:\ami\Quik_pozition_from_quik.et")
+WRITE ("C:\ami\Quik_pozition_from_quik.et",(position_quik&"" ))
+'---save pozition ami from quik
+CLEAR_FILE ("C:\ami\Ami_pozition_from_quik.et")
+WRITE ("C:\ami\Ami_pozition_from_quik.et",(position_ami&"" ))
+
+
+delete_all_items()
+inputmap=CREATE_MAP()
+inputmap=SET_VALUE (inputmap, "PositionQ", (position_quik &""))
+inputmap=SET_VALUE (inputmap, "PositionA", (position_ami &""))
+inputmap=SET_VALUE (inputmap, "Quantity", (quantity &""))
+inputmap=SET_VALUE (inputmap,"Firm",(firm))
+inputmap=SET_VALUE (inputmap,"s",(s))
+inputmap=SET_VALUE (inputmap,"LastPrice",(LastPrice &""))
+inputmap=SET_VALUE (inputmap,"Counter",(count & ""))
+inputmap=SET_VALUE (inputmap,"ID",(trans_id & ""))
+ADD_ITEM (0,inputmap)
+
+
+
+
+
+END_PROGRAM
+
+PARAMETER PositionA;
+PARAMETER_TITLE PositionA;
+PARAMETER_DESCRIPTION PositionA;
+PARAMETER_TYPE STRING(45);
+END
+
+
+PARAMETER PositionQ;
+PARAMETER_TITLE PositionQ;
+PARAMETER_DESCRIPTION PositionQ;
+PARAMETER_TYPE STRING(45);
+END
+
+
+PARAMETER Quantity;
+PARAMETER_TITLE Quantity;
+PARAMETER_DESCRIPTION Quantity;
+PARAMETER_TYPE STRING(45);
+END
+
+PARAMETER Counter;
+PARAMETER_TITLE Counter;
+PARAMETER_DESCRIPTION Counter;
+PARAMETER_TYPE STRING(45);
+END
+
+PARAMETER ID;
+PARAMETER_TITLE ID;
+PARAMETER_DESCRIPTION ID;
+PARAMETER_TYPE STRING(45);
+END
+
+PARAMETER LastPrice;
+PARAMETER_TITLE LastPrice;
+PARAMETER_DESCRIPTION LastPrice;
+PARAMETER_TYPE STRING(45);
+END
+
+
+PARAMETER firm;
+PARAMETER_TITLE firm;
+PARAMETER_DESCRIPTION firm;
+PARAMETER_TYPE STRING(45);
+END
+
+PARAMETER s;
+PARAMETER_TITLE s;
+PARAMETER_DESCRIPTION s;
+PARAMETER_TYPE STRING(45);
+END
+
+
+END_PORTFOLIO_EX
+
+
